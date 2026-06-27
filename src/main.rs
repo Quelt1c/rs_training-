@@ -1,8 +1,10 @@
 use std::collections::HashMap;
+use std::fs;
+use std::io;
 
-fn print_char(indices: &HashMap<char, Vec<usize>>)
+fn print_char(map: &HashMap<char, Vec<usize>>)
 {
-    for(letter, list) in indices
+    for(letter, list) in map
     {
         println!("{}: {:?}", letter, list);
     }
@@ -64,10 +66,31 @@ fn split_by_word_own(map: &mut HashMap<String, Vec<usize>>, text: &str)
     }
 }
 
-fn main() {
+fn write_in_variable() -> io::Result<String>
+{
+    let text_from_file = fs::read_to_string("file.txt")?;
+    Ok(text_from_file)
+}
+
+
+fn main() -> io::Result<()> {
+
+    
+    let text = write_in_variable()?;
+    for line in text.lines()
+    {
+        println!("{}", line);
+    }
+    
+    /*
     let text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
     let text_ukr = "Україна... В одному вже тільки цьому слові і для нашого вуха, і для вуха чужинців бринить ціла музика смутку і жалю... Україна — країна смутку і краси, країна, де найбільше люблять волю... Україна — це тихі води і ясні зорі, зелені сади, білі хати, лани золотої пшениці, медові та молочні ріки... Україна — розкішний вінок із рути і барвінку, що над ним світять заплакані золоті зорі... Поема жалю і смутку, краси і недолі...";
+    */
     let mut count = HashMap::new();
-    split_by_word_own(&mut count, text_ukr);
+    split_by_word_own(&mut count, &text);
     print_string(&count);
+    Ok(())
 }
+
+    
+
