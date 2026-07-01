@@ -5,13 +5,14 @@ use std::path::{Path, PathBuf};
 pub fn walk_dir(
     path: &Path,
     map: &mut HashMap<String, HashMap<PathBuf, Vec<usize>>>,
+    case_sensitive: bool,
 ) -> std::io::Result<()> {
     for entry in std::fs::read_dir(path)? {
         let entry = entry?;
         let current = entry.path();
 
         if current.is_dir() {
-            _ = walk_dir(&current, map)?;
+            walk_dir(&current, map, case_sensitive)?;
         } else if current.is_file()
             && let Some(extension) = current.extension()
             && extension == "txt"
@@ -21,9 +22,15 @@ pub fn walk_dir(
             split_by_word_own(&mut wordt_map, &text);
 
             for (word, indices) in wordt_map {
-                map.entry(word)
-                    .or_default()
-                    .insert(current.clone(), indices);
+                let processed_word = if case_sensitive {
+                    word
+                } else {
+                    word.to_lowercase()
+                };
+                let word_entry = map.entry(processed_word).or_default();
+                let file_indices = word_entry.entry(current.clone()).or_default();
+                file_indices.extend(indices);
+                file_indices.sort()
             }
         }
     }

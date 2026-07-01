@@ -1,47 +1,36 @@
+use crate::case_checker::Checker;
+use clap::Parser;
 use std::collections::HashMap;
-use std::env::args;
-use std::io::Write;
 use std::path::PathBuf;
 
+mod case_checker;
 mod io_utils;
 mod text_tools;
 
 fn main() -> std::io::Result<()> {
-    let path = args()
-        .nth(1)
-        .map_or_else(|| PathBuf::from("."), PathBuf::from);
+    let args = Checker::parse();
 
     let mut map = HashMap::<String, HashMap<PathBuf, Vec<usize>>>::new();
 
-    io_utils::walk_dir(&path, &mut map)?;
+    io_utils::walk_dir(&args.file_path, &mut map, args.case_sensitive)?;
 
-    loop {
-        print!("Enter the word or '0' to exit: ");
-        std::io::stdout().flush()?;
+    let search_word = if args.case_sensitive {
+        args.text
+    } else {
+        args.text.to_lowercase()
+    };
 
-        let mut input = String::new();
-        std::io::stdin().read_line(&mut input)?;
-        let word = input.trim();
-        if word == "0" {
-            println!("Exit");
-            break;
+    if let Some(files_with_word) = map.get(&search_word) {
+        println!("{search_word} found in files: ");
+        for (file_path, indices) in files_with_word {
+            println!(
+                "File: {:?} in the position: {:?}\n",
+                file_path.display(),
+                indices
+            );
         }
-        if word.is_empty() {
-            continue;
-        }
-        if let Some(files_with_word) = map.get(word) {
-            println!("{word} found in files: ");
-            for (file_path, indices) in files_with_word {
-                println!(
-                    "File: {:?} in the position: {:?}\n",
-                    file_path.display(),
-                    indices
-                );
-            }
-        } else {
-            println!("A word {word} not found.\n");
-        }
+    } else {
+        println!("A word {search_word} not found.\n");
     }
-
     Ok(())
 }
