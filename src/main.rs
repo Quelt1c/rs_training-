@@ -1,16 +1,19 @@
 use std::collections::HashMap;
+use std::env::args;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 mod io_utils;
 mod text_tools;
 
 fn main() -> std::io::Result<()> {
-    let path = Path::new(".");
+    let path = args()
+        .nth(1)
+        .map_or_else(|| PathBuf::from("."), PathBuf::from);
 
     let mut map = HashMap::<String, HashMap<PathBuf, Vec<usize>>>::new();
 
-    io_utils::walk_dir(path, &mut map)?;
+    io_utils::walk_dir(&path, &mut map)?;
 
     loop {
         print!("Enter the word or '0' to exit: ");

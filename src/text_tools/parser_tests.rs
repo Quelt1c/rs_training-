@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use crate::text_tools::parser::split_by_word_own;
+use std::collections::HashMap;
 
 const LOREM_TEXT: &str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.";
 const UKR_TEXT: &str = "Україна... В одному вже тільки цьому слові бринить музика смутку і жалю...";
@@ -56,4 +56,3 @@ fn test_multiple_occurrences() {
     split_by_word_own(&mut map, repeating_text);
     assert_eq!(map.get("word"), Some(&vec![0, 10, 20]));
 }
-
