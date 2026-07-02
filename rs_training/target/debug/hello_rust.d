@@ -1,0 +1,1 @@
+/home/ddorofieiev/rs_training-/target/debug/hello_rust: /home/ddorofieiev/rs_training-/src/case_checker.rs /home/ddorofieiev/rs_training-/src/io_utils.rs /home/ddorofieiev/rs_training-/src/main.rs /home/ddorofieiev/rs_training-/src/text_tools/mod.rs /home/ddorofieiev/rs_training-/src/text_tools/parser.rs /home/ddorofieiev/rs_training-/src/text_tools/printer.rs
