@@ -1,6 +1,6 @@
 [workspace]
 members = [
-	"rs_training",
+	"word_finder",
 	"linked_list",
 ]
 resolver = "3"

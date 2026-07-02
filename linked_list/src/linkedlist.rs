@@ -1,19 +1,19 @@
-pub struct LinkedList {
-    head: Option<Box<Node>>,
+pub struct LinkedList<T> {
+    head: Option<Box<Node<T>>>,
     len: usize,
 }
 
-struct Node {
-    value: i32,
-    next: Option<Box<Node>>,
+struct Node<T> {
+    value: T,
+    next: Option<Box<Node<T>>>,
 }
 
-impl LinkedList {
+impl<T> LinkedList<T> {
     pub fn new() -> Self {
         LinkedList { head: None, len: 0 }
     }
 
-    pub fn push_front(&mut self, value: i32) {
+    pub fn push_front(&mut self, value: T) {
         let new_node = Box::new(Node {
             value,
             next: self.head.take(),
@@ -22,7 +22,7 @@ impl LinkedList {
         self.len += 1;
     }
 
-    pub fn pop_front(&mut self) -> Option<i32> {
+    pub fn pop_front(&mut self) -> Option<T> {
         self.head.take().map(|node| {
             self.head = node.next;
             self.len -= 1;
@@ -30,7 +30,7 @@ impl LinkedList {
         })
     }
 
-    pub fn peek_front(&self) -> Option<&i32> {
+    pub fn peek_front(&self) -> Option<&T> {
         self.head.as_ref().map(|node| &node.value)
     }
 
@@ -43,26 +43,26 @@ impl LinkedList {
     }
 }
 
-pub struct IntoIter(LinkedList);
+pub struct IntoIter<T>(LinkedList<T>);
 
-impl Iterator for IntoIter {
-    type Item = i32;
+impl<T> Iterator for IntoIter<T> {
+    type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.0.pop_front()
     }
 }
 
-impl IntoIterator for LinkedList {
-    type Item = i32;
-    type IntoIter = IntoIter;
+impl<T> IntoIterator for LinkedList<T> {
+    type Item = T;
+    type IntoIter = IntoIter<T>;
 
     fn into_iter(self) -> Self::IntoIter {
         IntoIter(self)
     }
 }
 
-impl Drop for LinkedList {
+impl<T> Drop for LinkedList<T> {
     fn drop(&mut self) {
         let mut cur_link = self.head.take();
         while let Some(mut boxed_node) = cur_link {
