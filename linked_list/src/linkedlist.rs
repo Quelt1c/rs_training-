@@ -23,15 +23,15 @@ impl<T> LinkedList<T> {
     }
 
     pub fn pop_front(&mut self) -> Option<T> {
-        self.head.take().map(|node| {
-            self.head = node.next;
-            self.len -= 1;
-            node.value
-        })
+        let node = self.head.take()?;
+        self.head = node.next;
+        self.len -= 1;
+        Some(node.value)
     }
 
     pub fn peek_front(&self) -> Option<&T> {
-        self.head.as_ref().map(|node| &node.value)
+        let node = self.head.as_ref()?;
+        Some(&node.value)
     }
 
     pub fn len(&self) -> usize {
@@ -80,10 +80,9 @@ impl<'a, T> Iterator for Iter<'a, T> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.next.map(|node| {
-            self.next = node.next.as_deref();
-            &node.value
-        })
+        let node = self.next?;
+        self.next = node.next.as_deref();
+        Some(&node.value)
     }
 }
 
@@ -104,10 +103,9 @@ impl<'a, T> Iterator for IterMut<'a, T> {
     type Item = &'a mut T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.next.take().map(|node| {
-            self.next = node.next.as_deref_mut();
-            &mut node.value
-        })
+        let node = self.next.take()?;
+        self.next = node.next.as_deref_mut();
+        Some(&mut node.value)
     }
 }
 

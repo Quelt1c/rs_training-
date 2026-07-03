@@ -4,26 +4,19 @@ use linkedlist::LinkedList;
 
 fn main() {
     let mut list = LinkedList::new();
-    list.push_front(42);
-    list.push_front(100);
-    list.push_front(7);
+    list.push_front(1);
+    list.push_front(2);
+    list.push_front(3);
 
-    println!("Length of the list: {}", list.len());
-    if list.is_empty() {
-        println!("The list is empty.");
-    } else {
-        println!("The list is not empty.");
+    for item in &list {
+        print!("Elements: {}\n", item);
     }
 
-    if let Some(&first) = list.peek_front() {
-        println!("The first number without removing: {}", first);
-    }
-
-    for number in &list {
-        println!("Elements of the list: {}", number);
+    for item in &mut list {
+        *item *= 2;
     }
 
     for item in &list {
-        println!("Iterating over the list: {}", item);
+        print!("After modification: {}\n", item);
     }
 }
