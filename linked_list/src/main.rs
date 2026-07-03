@@ -19,7 +19,11 @@ fn main() {
         println!("The first number without removing: {}", first);
     }
 
-    for number in list {
+    for number in &list {
         println!("Elements of the list: {}", number);
+    }
+
+    for item in &list {
+        println!("Iterating over the list: {}", item);
     }
 }

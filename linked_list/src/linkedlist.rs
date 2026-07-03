@@ -41,9 +41,18 @@ impl<T> LinkedList<T> {
     pub fn is_empty(&self) -> bool {
         self.len == 0
     }
+    pub fn iter(&self) -> Iter<'_, T> {
+        Iter {
+            next: self.head.as_deref(),
+        }
+    }
 }
 
 pub struct IntoIter<T>(LinkedList<T>);
+
+pub struct Iter<'a, T> {
+    next: Option<&'a Node<T>>,
+}
 
 impl<T> Iterator for IntoIter<T> {
     type Item = T;
@@ -59,6 +68,26 @@ impl<T> IntoIterator for LinkedList<T> {
 
     fn into_iter(self) -> Self::IntoIter {
         IntoIter(self)
+    }
+}
+
+impl<'a, T> Iterator for Iter<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next.map(|node| {
+            self.next = node.next.as_deref();
+            &node.value
+        })
+    }
+}
+
+impl<'a, T> IntoIterator for &'a LinkedList<T> {
+    type Item = &'a T;
+    type IntoIter = Iter<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
     }
 }
 
