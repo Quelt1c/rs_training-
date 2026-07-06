@@ -34,7 +34,7 @@ pub fn spawn_search_threads(
 
         let handle = thread::spawn(move || {
             for path in chunk {
-                let _ = walk_dir(&path, Arc::clone(&map_clone), case_sensitive);
+                //let _ = walk_dir(&path, Arc::clone(&map_clone), case_sensitive);
             }
         });
         handles.push(handle);
