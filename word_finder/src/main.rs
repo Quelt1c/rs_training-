@@ -5,7 +5,7 @@ use std::io::{self, Write};
 
 mod case_checker;
 mod io_utils;
-mod spawn_threads;
+mod spawn_workers;
 mod text_tools;
 
 fn main() -> std::io::Result<()> {
@@ -14,8 +14,36 @@ fn main() -> std::io::Result<()> {
 
     io_utils::walk_dir_single(&args.file_path, &mut map, args.case_sensitive)?;
 
+    let (input_tx, input_rx) = flume::unbounded();
+    let (output_tx, output_rx) = flume::unbounded();
+
+    let handles = spawn_workers::spawn_worker_threads(
+        input_rx,
+        output_tx.clone(),
+        args.case_sensitive,
+        args.threads,
+    );
+
+    drop(output_tx);
+
+    io_utils::produce_file_tasks(&args.file_path, &input_tx)?;
+
+    drop(input_tx);
+
+    while let Ok(report) = output_rx.recv() {
+        for (word, indices) in report.words_map {
+            let word_entry = map.entry(word).or_default();
+            let file_indices = word_entry.entry(report.file_path.clone()).or_default();
+            file_indices.extend(indices);
+            file_indices.sort();
+        }
+    }
+
+    for handle in handles {
+        let _ = handle.join();
+    }
     loop {
-        print!("Enter word to search (or type ':q' to exit): ");
+        print!("Enter word or q to exit: ");
         io::stdout().flush()?;
 
         let mut input_word = String::new();
@@ -23,8 +51,8 @@ fn main() -> std::io::Result<()> {
 
         let trimmed_word = input_word.trim();
 
-        if trimmed_word == ":q" {
-            println!("Exiting program. Bye!");
+        if trimmed_word == "q" {
+            println!("Exit");
             break;
         }
 
@@ -39,7 +67,7 @@ fn main() -> std::io::Result<()> {
         };
 
         if let Some(files_with_word) = map.get(&search_word) {
-            println!("{search_word} found in files: ");
+            println!("{trimmed_word} found in files: ");
             for (file_path, indices) in files_with_word {
                 println!(
                     "File: {:?} in the position: {:?}\n",
