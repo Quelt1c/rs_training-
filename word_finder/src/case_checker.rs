@@ -8,4 +8,6 @@ pub struct Checker {
     pub case_sensitive: bool,
     pub file_path: PathBuf,
     pub text: String,
+    #[arg(short, long, default_value_t = 1)]
+    pub threads: usize,
 }
