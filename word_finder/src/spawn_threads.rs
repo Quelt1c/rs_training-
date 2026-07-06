@@ -9,6 +9,7 @@ pub fn spawn_search_threads(
     root_path: &Path,
     shared_map: SharedMap,
     case_sensitive: bool,
+    threads: usize,
 ) -> std::io::Result<Vec<JoinHandle<()>>> {
     let mut entries = Vec::new();
 
@@ -24,7 +25,7 @@ pub fn spawn_search_threads(
         return Ok(Vec::new());
     }
 
-    let chunk_size = (entries.len() + 3) / 4;
+    let chunk_size = (entries.len() + threads - 1) / threads;
     let mut handles = Vec::new();
 
     for chunk in entries.chunks(chunk_size) {

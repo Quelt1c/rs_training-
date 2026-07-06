@@ -5,18 +5,19 @@ use std::sync::{Arc, Mutex};
 
 mod case_checker;
 mod io_utils;
+mod spawn_threads;
 mod text_tools;
-mod threads_create;
 
 fn main() -> std::io::Result<()> {
     let args = Checker::parse();
 
     let shared_map = Arc::new(Mutex::new(HashMap::new()));
 
-    let handles = threads_create::spawn_search_threads(
+    let handles = spawn_threads::spawn_search_threads(
         &args.file_path,
         Arc::clone(&shared_map),
         args.case_sensitive,
+        args.threads,
     )?;
 
     println!("Threads are launched: {}.", handles.len());
