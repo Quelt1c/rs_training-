@@ -6,7 +6,33 @@ pub struct FileReport {
     pub file_path: PathBuf,
     pub words_map: HashMap<String, Vec<usize>>,
 }
+fn parse_and_normalize_file(
+    current: &Path,
+    case_sensitive: bool,
+) -> Option<HashMap<String, Vec<usize>>> {
+    if current.is_file()
+        && current.extension().map_or(false, |ext| ext == "txt")
+        && let Ok(text) = std::fs::read_to_string(current)
+    {
+        let mut raw_map = HashMap::new();
+        split_by_word_own(&mut raw_map, &text);
 
+        let mut processed_map: HashMap<String, Vec<usize>> = HashMap::with_capacity(raw_map.len());
+
+        for (word, indices) in raw_map {
+            let processed_word = if case_sensitive {
+                word
+            } else {
+                word.to_lowercase()
+            };
+            let file_indices = processed_map.entry(processed_word).or_default();
+            file_indices.extend(indices);
+            file_indices.sort();
+        }
+        return Some(processed_map);
+    }
+    None
+}
 pub fn walk_dir_single(
     path: &Path,
     map: &mut HashMap<String, HashMap<PathBuf, Vec<usize>>>,
@@ -35,28 +61,15 @@ fn process_file_single(
     map: &mut HashMap<String, HashMap<PathBuf, Vec<usize>>>,
     case_sensitive: bool,
 ) {
-    if current.is_file()
-        && let Some(extension) = current.extension()
-        && extension == "txt"
-        && let Ok(text) = std::fs::read_to_string(current)
-    {
-        let mut wordt_map = HashMap::new();
-        split_by_word_own(&mut wordt_map, &text);
-
-        for (word, indices) in wordt_map {
-            let processed_word = if case_sensitive {
-                word
-            } else {
-                word.to_lowercase()
-            };
-            let word_entry = map.entry(processed_word).or_default();
+    if let Some(processed_map) = parse_and_normalize_file(current, case_sensitive) {
+        for (word, indices) in processed_map {
+            let word_entry = map.entry(word).or_default();
             let file_indices = word_entry.entry(current.to_path_buf()).or_default();
             file_indices.extend(indices);
             file_indices.sort();
         }
     }
 }
-
 pub fn produce_file_tasks(path: &Path, input_tx: &flume::Sender<PathBuf>) -> std::io::Result<()> {
     if path.is_file() {
         let _ = input_tx.send(path.to_path_buf());
@@ -82,27 +95,7 @@ pub fn file_worker_channels(
     case_sensitive: bool,
 ) {
     while let Ok(current) = input_rx.recv() {
-        if current.is_file()
-            && let Some(extension) = current.extension()
-            && extension == "txt"
-            && let Ok(text) = std::fs::read_to_string(&current)
-        {
-            let mut wordt_map = HashMap::new();
-            split_by_word_own(&mut wordt_map, &text);
-
-            let mut processed_map: HashMap<String, Vec<usize>> = HashMap::new();
-
-            for (word, indices) in wordt_map {
-                let processed_word = if case_sensitive {
-                    word
-                } else {
-                    word.to_lowercase()
-                };
-                let file_indices = processed_map.entry(processed_word).or_default();
-                file_indices.extend(indices);
-                file_indices.sort();
-            }
-
+        if let Some(processed_map) = parse_and_normalize_file(&current, case_sensitive) {
             let report = FileReport {
                 file_path: current,
                 words_map: processed_map,
