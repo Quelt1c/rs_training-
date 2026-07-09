@@ -25,9 +25,7 @@ fn parse_and_normalize_file(
             } else {
                 word.to_lowercase()
             };
-            let file_indices = processed_map.entry(processed_word).or_default();
-            file_indices.extend(indices);
-            file_indices.sort();
+            processed_map.insert(processed_word, indices);
         }
         return Some(processed_map);
     }
@@ -63,14 +61,13 @@ fn process_file_single(
 ) {
     if let Some(processed_map) = parse_and_normalize_file(current, case_sensitive) {
         for (word, indices) in processed_map {
-            let word_entry = map.entry(word).or_default();
-            let file_indices = word_entry.entry(current.to_path_buf()).or_default();
-            file_indices.extend(indices);
-            file_indices.sort();
+            map.entry(word)
+                .or_default()
+                .insert(current.to_path_buf(), indices);
         }
     }
 }
-pub fn produce_file_tasks(path: &Path, input_tx: &flume::Sender<PathBuf>) -> std::io::Result<()> {
+pub fn produce_file_tasks(path: &Path, input_tx: flume::Sender<PathBuf>) -> std::io::Result<()> {
     if path.is_file() {
         let _ = input_tx.send(path.to_path_buf());
         return Ok(());
@@ -81,7 +78,7 @@ pub fn produce_file_tasks(path: &Path, input_tx: &flume::Sender<PathBuf>) -> std
         let current = entry.path();
 
         if current.is_dir() {
-            produce_file_tasks(&current, input_tx)?;
+            produce_file_tasks(&current, input_tx.clone())?;
         } else {
             let _ = input_tx.send(current);
         }
