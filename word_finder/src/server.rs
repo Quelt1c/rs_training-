@@ -1,15 +1,10 @@
-use std::collections::HashMap;
+use crate::Database;
 use std::net::TcpListener;
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tracing::{error, info};
 
-pub mod network_handler;
-
-pub type IndexMap = HashMap<String, HashMap<PathBuf, Vec<usize>>>;
-
-pub fn run_server(map: Arc<IndexMap>, case_sensitive: bool, addr: &str) -> std::io::Result<()> {
+pub fn run_server(db: Database, case_sensitive: bool, addr: &str) -> std::io::Result<()> {
     let client_counter = Arc::new(AtomicUsize::new(1));
     let listener = TcpListener::bind(addr)?;
     info!("Server is active on {}", addr);
@@ -17,14 +12,14 @@ pub fn run_server(map: Arc<IndexMap>, case_sensitive: bool, addr: &str) -> std::
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
-                let map_clone = Arc::clone(&map);
+                let db_clone = db.clone();
                 let counter_clone = Arc::clone(&client_counter);
                 let client_id = counter_clone.fetch_add(1, Ordering::SeqCst);
 
                 std::thread::spawn(move || {
-                    if let Err(e) = network_handler::handle_network_client(
+                    if let Err(e) = crate::network_handler::handle_network_client(
                         stream,
-                        map_clone,
+                        db_clone,
                         case_sensitive,
                         client_id,
                     ) {
