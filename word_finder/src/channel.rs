@@ -1,6 +1,6 @@
+use parking_lot::{Condvar, Mutex};
 use std::collections::VecDeque;
-use std::sync::{Arc, Condvar, Mutex};
-
+use std::sync::Arc;
 #[derive(Debug)]
 pub struct SendError<T>(pub T);
 
@@ -24,7 +24,7 @@ pub struct Sender<T> {
 
 impl<T> Sender<T> {
     pub fn send(&self, msg: T) -> Result<(), SendError<T>> {
-        let mut state = self.shared.state.lock().unwrap();
+        let mut state = self.shared.state.lock();
 
         if state.receiver_count == 0 {
             return Err(SendError(msg));
@@ -39,7 +39,7 @@ impl<T> Sender<T> {
 
 impl<T> Clone for Sender<T> {
     fn clone(&self) -> Self {
-        let mut state = self.shared.state.lock().unwrap();
+        let mut state = self.shared.state.lock();
         state.sender_count += 1;
         Sender {
             shared: self.shared.clone(),
@@ -49,7 +49,7 @@ impl<T> Clone for Sender<T> {
 
 impl<T> Drop for Sender<T> {
     fn drop(&mut self) {
-        let mut state = self.shared.state.lock().unwrap();
+        let mut state = self.shared.state.lock();
         state.sender_count -= 1;
 
         if state.sender_count == 0 {
@@ -64,14 +64,14 @@ pub struct Receiver<T> {
 
 impl<T> Receiver<T> {
     pub fn recv(&self) -> Result<T, RecvError> {
-        let mut state = self.shared.state.lock().unwrap();
+        let mut state = self.shared.state.lock();
 
         while state.queue.is_empty() {
             if state.sender_count == 0 {
                 return Err(RecvError);
             }
 
-            state = self.shared.condvar.wait(state).unwrap();
+            self.shared.condvar.wait(&mut state);
         }
 
         Ok(state.queue.pop_front().unwrap())
@@ -80,7 +80,7 @@ impl<T> Receiver<T> {
 
 impl<T> Clone for Receiver<T> {
     fn clone(&self) -> Self {
-        let mut state = self.shared.state.lock().unwrap();
+        let mut state = self.shared.state.lock();
         state.receiver_count += 1;
         Receiver {
             shared: self.shared.clone(),
@@ -90,7 +90,7 @@ impl<T> Clone for Receiver<T> {
 
 impl<T> Drop for Receiver<T> {
     fn drop(&mut self) {
-        let mut state = self.shared.state.lock().unwrap();
+        let mut state = self.shared.state.lock();
         state.receiver_count -= 1;
     }
 }
@@ -104,7 +104,6 @@ pub fn unbounded<T>() -> (Sender<T>, Receiver<T>) {
         }),
         condvar: Condvar::new(),
     });
-
     (
         Sender {
             shared: shared.clone(),

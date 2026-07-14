@@ -1,5 +1,4 @@
-use crate::Database;
-use crate::channel;
+use crate::database::Database;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Write};
@@ -21,43 +20,8 @@ pub fn handle_network_client(
 ) -> std::io::Result<()> {
     info!("Client #{} connected!", client_id);
 
-    let (writer_tx, writer_rx) =
-        channel::unbounded::<(String, Option<HashMap<std::path::PathBuf, Vec<usize>>>)>();
-    let writer_stream = stream.try_clone()?;
-
-    std::thread::spawn(move || {
-        let mut socket = writer_stream;
-        while let Ok((word, results)) = writer_rx.recv() {
-            let response = match results {
-                Some(files_with_word) => {
-                    let mut string_results = HashMap::new();
-                    for (path, indices) in files_with_word {
-                        string_results.insert(path.to_string_lossy().into_owned(), indices);
-                    }
-                    NetworkResponse {
-                        word,
-                        found: true,
-                        results: string_results,
-                    }
-                }
-                None => NetworkResponse {
-                    word,
-                    found: false,
-                    results: HashMap::new(),
-                },
-            };
-
-            if let Ok(json_string) = serde_json::to_string(&response) {
-                let mut payload = json_string;
-                payload.push('\n');
-                if socket.write_all(payload.as_bytes()).is_err() || socket.flush().is_err() {
-                    break;
-                }
-            }
-        }
-    });
-
     let mut reader = BufReader::new(stream);
+
     {
         let socket = reader.get_mut();
         writeln!(socket, "{}", client_id)?;
@@ -82,9 +46,39 @@ pub fn handle_network_client(
             trimmed_word.to_lowercase()
         };
 
-        db.search(search_word, writer_tx.clone());
+        let results = db.get(search_word.clone());
+
+        let response = match results {
+            Some(files_with_word) => {
+                let mut string_results = HashMap::new();
+                for (path, indices) in files_with_word {
+                    string_results.insert(path.to_string_lossy().into_owned(), indices);
+                }
+                NetworkResponse {
+                    word: search_word,
+                    found: true,
+                    results: string_results,
+                }
+            }
+            None => NetworkResponse {
+                word: search_word,
+                found: false,
+                results: HashMap::new(),
+            },
+        };
+
+        if let Ok(json_string) = serde_json::to_string(&response) {
+            let mut payload = json_string;
+            payload.push('\n');
+
+            // Дістаємо мутабельне посилання на сокет із reader
+            let socket = reader.get_mut();
+            if socket.write_all(payload.as_bytes()).is_err() || socket.flush().is_err() {
+                break;
+            }
+        }
     }
 
-    info!("ClientReader #{} disconnected.", client_id);
+    info!("Client #{} disconnected.", client_id);
     Ok(())
 }
