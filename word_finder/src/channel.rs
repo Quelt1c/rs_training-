@@ -74,7 +74,9 @@ impl<T> Receiver<T> {
             self.shared.condvar.wait(&mut state);
         }
 
-        Ok(state.queue.pop_front().unwrap())
+        Ok(state.queue.pop_front().expect(
+            "Internal channel error: the queue cannot be empty after exiting the wait loop",
+        ))
     }
 }
 
