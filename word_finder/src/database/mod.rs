@@ -1,4 +1,4 @@
-mod client;
+mod database;
 pub(crate) mod messages;
 
-pub use client::Database;
+pub use database::Database;

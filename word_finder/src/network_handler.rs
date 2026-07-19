@@ -71,7 +71,6 @@ pub fn handle_network_client(
             let mut payload = json_string;
             payload.push('\n');
 
-            // Дістаємо мутабельне посилання на сокет із reader
             let socket = reader.get_mut();
             if socket.write_all(payload.as_bytes()).is_err() || socket.flush().is_err() {
                 break;

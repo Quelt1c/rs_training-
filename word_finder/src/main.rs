@@ -11,6 +11,8 @@ use crate::case_checker::Checker;
 use clap::Parser;
 use database::Database;
 use tracing::{Level, info};
+#[cfg(test)]
+mod channels_test;
 
 fn main() -> std::io::Result<()> {
     tracing_subscriber::fmt().with_max_level(Level::INFO).init();
