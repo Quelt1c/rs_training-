@@ -10,20 +10,41 @@ pub struct Database {
 }
 
 impl Database {
-    pub fn new(output_rx: channel::Receiver<FileReport>) -> Self {
+    pub fn new(file_path: PathBuf, threads: usize, case_sensitive: bool) -> Self {
         let (tx, rx) = channel::unbounded();
 
         std::thread::spawn(move || {
             let mut storage: HashMap<String, HashMap<PathBuf, Vec<usize>>> = HashMap::new();
 
+            let (input_tx, input_rx) = channel::unbounded();
+            let (output_tx, output_rx) = channel::unbounded();
+
+            crate::pipeline::spawn_workers::spawn_worker_threads(
+                input_rx,
+                output_tx,
+                case_sensitive,
+                threads,
+            );
+
+            if let Err(e) = crate::io_utils::produce_file_tasks(&file_path, input_tx) {
+                tracing::error!("File scanning error: {}", e);
+            }
+
             while let Ok(report) = output_rx.recv() {
-                for (word, indices) in report.words_map {
+                let FileReport {
+                    file_path,
+                    words_map,
+                } = report;
+
+                for (word, indices) in words_map {
                     storage
                         .entry(word)
                         .or_default()
-                        .insert(report.file_path.clone(), indices);
+                        .insert(file_path.clone(), indices);
                 }
             }
+
+            tracing::info!("Background indexing of the database completed successfully!");
 
             while let Ok(msg) = rx.recv() {
                 match msg {
