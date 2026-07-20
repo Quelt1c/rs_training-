@@ -1,3 +1,4 @@
+pub mod network_handler;
 use crate::Database;
 use std::net::TcpListener;
 use std::sync::Arc;
