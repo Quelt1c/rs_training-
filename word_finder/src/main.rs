@@ -1,13 +1,11 @@
 mod case_checker;
 mod channel;
 mod database;
-mod pipeline;
 mod server;
 mod text_tools;
 use crate::case_checker::Checker;
 use clap::Parser;
 use database::Database;
-use database::io_utils;
 use tracing::{Level, info};
 
 fn main() -> std::io::Result<()> {
