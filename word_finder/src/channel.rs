@@ -8,14 +8,14 @@ pub struct SendError<T>(pub T);
 #[derive(Debug)]
 pub struct RecvError;
 
-struct ChannelState<T> {
+struct flumeState<T> {
     queue: VecDeque<T>,
     sender_count: usize,
     receiver_count: usize,
 }
 
 struct Shared<T> {
-    state: Mutex<ChannelState<T>>,
+    state: Mutex<flumeState<T>>,
     condvar: Condvar,
 }
 
@@ -98,7 +98,7 @@ impl<T> Drop for Receiver<T> {
 
 pub fn unbounded<T>() -> (Sender<T>, Receiver<T>) {
     let shared = Arc::new(Shared {
-        state: Mutex::new(ChannelState {
+        state: Mutex::new(flumeState {
             queue: VecDeque::new(),
             sender_count: 1,
             receiver_count: 1,
