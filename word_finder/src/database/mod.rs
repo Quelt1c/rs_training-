@@ -2,7 +2,6 @@ use crate::database::messages::DatabaseMessage;
 use flume;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::thread;
 
 mod io_utils;
 mod messages;
@@ -21,7 +20,7 @@ impl Database {
     pub fn new(file_path: PathBuf, threads: usize, case_sensitive: bool) -> Self {
         let (tx, rx) = flume::unbounded();
 
-        thread::spawn(move || {
+        tokio::spawn(async move {
             let mut storage: HashMap<String, HashMap<PathBuf, Vec<usize>>> = HashMap::new();
 
             let (input_tx, input_rx) = flume::unbounded();
@@ -29,11 +28,11 @@ impl Database {
 
             spawn_worker_threads(input_rx, output_tx, case_sensitive, threads);
 
-            if let Err(e) = produce_file_tasks(&file_path, input_tx) {
+            if let Err(e) = produce_file_tasks(file_path, input_tx).await {
                 tracing::error!("File scanning error: {}", e);
             }
 
-            while let Ok(report) = output_rx.recv() {
+            while let Ok(report) = output_rx.recv_async().await {
                 let FileReport {
                     file_path,
                     words_map,
@@ -46,11 +45,12 @@ impl Database {
                         .insert(file_path.clone(), indices);
                 }
             }
-            while let Ok(msg) = rx.recv() {
+
+            while let Ok(msg) = rx.recv_async().await {
                 match msg {
                     DatabaseMessage::Search { word, respond_to } => {
                         let res = storage.get(&word).cloned();
-                        let _ = respond_to.send((word, res));
+                        let _ = respond_to.send_async((word, res)).await;
                     }
                 }
             }
@@ -68,6 +68,7 @@ impl Database {
         } else {
             word.to_lowercase()
         };
+
         let (response_tx, response_rx) = flume::bounded(1);
 
         let send_result = self
