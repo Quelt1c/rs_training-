@@ -139,15 +139,11 @@ pub async fn search_handler(
     let results = db.get(clean_word.to_string()).await;
 
     match results {
-        None => (StatusCode::NOT_FOUND, "Not Found\n".to_string()),
-        Some(files) if files.is_empty() => {
-            (StatusCode::NOT_FOUND, "No results found\n".to_string())
-        }
-        Some(files) => {
+        Some(files) if !files.is_empty() => {
             let res = format_results(clean_word, files);
-
             (StatusCode::OK, res)
         }
+        _ => (StatusCode::NOT_FOUND, "No results found".to_string()),
     }
 }
 
