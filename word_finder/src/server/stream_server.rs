@@ -132,7 +132,7 @@ pub async fn search_handler(
     if clean_word.is_empty() {
         return (
             StatusCode::BAD_REQUEST,
-            "Usage: enter a word in the query parameter (e.g., http://127.0.0.1:27015/search?word=Lorem)\n".to_string(),
+            "Usage: enter a word in the query parameter (e.g., http://127.0.0.1:27015/search?word=Lorem)".to_string(),
         );
     }
 

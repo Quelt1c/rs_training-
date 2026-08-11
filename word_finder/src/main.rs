@@ -1,14 +1,13 @@
 mod case_checker;
+mod channel;
 mod database;
 mod server;
 mod text_tools;
-
 use crate::case_checker::Checker;
 use anyhow;
 use clap::Parser;
 use database::Database;
 use tracing::{Level, info};
-
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt().with_max_level(Level::INFO).init();

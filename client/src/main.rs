@@ -52,7 +52,7 @@ fn main() -> io::Result<()> {
 
         let mut response_line = String::new();
         if server_reader.read_line(&mut response_line)? == 0 {
-            error!("Connection interrupted: the server closed the communication flume.");
+            error!("Connection interrupted: the server closed the communication channel.");
             break;
         }
 

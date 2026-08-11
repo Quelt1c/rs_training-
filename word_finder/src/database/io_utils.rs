@@ -1,8 +1,8 @@
 use crate::text_tools::parser::split_by_word_own;
-use flume;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+use crate::channel;
 pub struct FileReport {
     pub file_path: PathBuf,
     pub words_map: HashMap<String, Vec<usize>>,
@@ -10,7 +10,7 @@ pub struct FileReport {
 
 pub async fn produce_file_tasks(
     path: PathBuf,
-    input_tx: flume::Sender<PathBuf>,
+    input_tx: channel::Sender<PathBuf>,
 ) -> std::io::Result<()> {
     let mut dirs_to_visit = vec![path];
 
@@ -37,12 +37,12 @@ pub async fn produce_file_tasks(
     Ok(())
 }
 
-pub async fn file_worker_flumes(
-    input_rx: flume::Receiver<PathBuf>,
-    output_tx: flume::Sender<FileReport>,
+pub async fn file_worker_channels(
+    input_rx: channel::Receiver<PathBuf>,
+    output_tx: channel::Sender<FileReport>,
     case_sensitive: bool,
 ) {
-    while let Ok(current) = input_rx.recv_async().await {
+    while let Ok(current) = input_rx.recv().await {
         if let Some(processed_map) = parse_and_normalize_file(&current, case_sensitive).await {
             let report = FileReport {
                 file_path: current.to_path_buf(),

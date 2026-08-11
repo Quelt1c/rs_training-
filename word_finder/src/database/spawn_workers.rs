@@ -1,11 +1,11 @@
-use super::io_utils::{FileReport, file_worker_flumes};
-use flume;
+use super::io_utils::{FileReport, file_worker_channels};
+use crate::channel;
 use std::path::PathBuf;
 use tokio::task::JoinHandle;
 
 pub fn spawn_worker_threads(
-    input_rx: flume::Receiver<PathBuf>,
-    output_tx: flume::Sender<FileReport>,
+    input_rx: channel::Receiver<PathBuf>,
+    output_tx: channel::Sender<FileReport>,
     case_sensitive: bool,
     threads: usize,
 ) -> Vec<JoinHandle<()>> {
@@ -16,7 +16,7 @@ pub fn spawn_worker_threads(
         let output_tx_clone = output_tx.clone();
 
         let handle = tokio::spawn(async move {
-            file_worker_flumes(input_rx_clone, output_tx_clone, case_sensitive).await;
+            file_worker_channels(input_rx_clone, output_tx_clone, case_sensitive).await;
         });
 
         handles.push(handle);
