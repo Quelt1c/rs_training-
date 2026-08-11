@@ -1,7 +1,6 @@
 use crate::channel;
 use std::collections::HashMap;
 use std::path::PathBuf;
-
 pub(crate) enum DatabaseMessage {
     Search {
         word: String,
