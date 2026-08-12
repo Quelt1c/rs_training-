@@ -108,11 +108,8 @@
 //     output
 // }
 
+use super::own_axum::{HttpRequest, HttpResponse, Query, StatusCode};
 use crate::database::Database;
-use axum::{
-    extract::{Query, State},
-    http::StatusCode,
-};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -124,26 +121,50 @@ pub struct SearchParams {
 }
 
 pub async fn search_handler(
-    State(db): State<Database>,
+    req: HttpRequest,
     Query(params): Query<SearchParams>,
-) -> (StatusCode, String) {
+    db: Database,
+) -> HttpResponse {
     let clean_word = params.word.trim();
 
+    let accepts_json = req
+        .header("accept")
+        .is_some_and(|v| v.to_lowercase().contains("application/json"));
+
     if clean_word.is_empty() {
-        return (
-            StatusCode::BAD_REQUEST,
-            "Usage: enter a word in the query parameter (e.g., http://127.0.0.1:27015/search?word=Lorem)".to_string(),
-        );
+        let msg = "Usage: enter a word in the query parameter (e.g., http://127.0.0.1:27015/search?word=Lorem)";
+        return if accepts_json {
+            HttpResponse::json(StatusCode::BAD_REQUEST, format!(r#"{{"error": "{msg}"}}"#))
+        } else {
+            HttpResponse::new(StatusCode::BAD_REQUEST, msg)
+        };
     }
 
     let results = db.get(clean_word.to_string()).await;
 
     match results {
         Some(files) if !files.is_empty() => {
-            let res = format_results(clean_word, files);
-            (StatusCode::OK, res)
+            if accepts_json {
+                let json_body = match serde_json::to_string(&files) {
+                    Ok(json) => json,
+                    Err(_) => "{}".to_string(),
+                };
+                HttpResponse::json(StatusCode::OK, json_body)
+            } else {
+                let text_body = format_results(clean_word, files);
+                HttpResponse::new(StatusCode::OK, &text_body)
+            }
         }
-        _ => (StatusCode::NOT_FOUND, "No results found".to_string()),
+        _ => {
+            if accepts_json {
+                HttpResponse::json(
+                    StatusCode::NOT_FOUND,
+                    r#"{"error": "No results found"}"#.to_string(),
+                )
+            } else {
+                HttpResponse::new(StatusCode::NOT_FOUND, "No results found\n")
+            }
+        }
     }
 }
 

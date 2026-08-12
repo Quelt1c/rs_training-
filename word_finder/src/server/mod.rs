@@ -32,31 +32,28 @@
 //     }
 // }
 
+pub mod own_axum;
 pub mod stream_server;
 
-use crate::database::Database;
+use crate::{database::Database, server::own_axum::info_handler};
 use anyhow::{Context, Result};
-use axum::{Router, http::StatusCode, routing::get};
+use own_axum::{Router, StatusCode, get, serve};
 use tokio::net::TcpListener;
 use tracing::info;
 
 pub async fn run_server(addr: &str, db: Database) -> Result<()> {
     let listener = TcpListener::bind(addr).await.with_context(|| {
-        format!("Failed to start the server. Check if port {addr} is already in use",)
+        format!("Failed to start the server. Check if port {addr} is already in use")
     })?;
 
     info!("Server is running on http://{addr}");
 
-    let app = Router::new()
-        .route("/search", get(stream_server::search_handler))
-        .fallback(not_found)
-        .with_state(db);
+    let router = Router::new()
+        .route("/search", get(stream_server::search_handler, db.clone()))
+        .route("/info", get(info_handler, ()))
+        .fallback(not_found);
 
-    axum::serve(listener, app)
-        .await
-        .context("Critical error while running the server")?;
-
-    Ok(())
+    serve(listener, router).await
 }
 
 async fn not_found() -> (StatusCode, &'static str) {
