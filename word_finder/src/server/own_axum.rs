@@ -13,6 +13,7 @@ pub enum StatusCode {
     OK = 200,
     BAD_REQUEST = 400,
     NOT_FOUND = 404,
+    METHOD_NOT_ALLOWED = 405,
 }
 
 impl StatusCode {
@@ -21,6 +22,7 @@ impl StatusCode {
             StatusCode::OK => (200, "OK"),
             StatusCode::BAD_REQUEST => (400, "Bad Request"),
             StatusCode::NOT_FOUND => (404, "Not Found"),
+            StatusCode::METHOD_NOT_ALLOWED => (405, "Method Not Allowed"),
         }
     }
 }
@@ -95,11 +97,24 @@ type BoxFuture = Pin<Box<dyn Future<Output = HttpResponse> + Send>>;
 type BoxedHandler = Box<dyn Fn(HttpRequest) -> BoxFuture + Send + Sync>;
 
 #[derive(serde::Deserialize)]
-pub struct NoParams {}
+pub struct InfoParams {
+    pub format: Option<String>,
+}
 
-pub async fn info_handler(_req: HttpRequest, _query: Query<NoParams>, _state: ()) -> HttpResponse {
-    let cargo_info = include_str!("../../Cargo.toml");
-    HttpResponse::new(StatusCode::OK, cargo_info)
+pub async fn info_handler(_req: HttpRequest, query: Query<InfoParams>, _state: ()) -> HttpResponse {
+    let name = env!("CARGO_PKG_NAME");
+    let version = env!("CARGO_PKG_VERSION");
+
+    match query.0.format.as_deref() {
+        Some("json") => {
+            let body = format!(r#"{{"name": "{name}", "version": "{version}"}}"#);
+            HttpResponse::json(StatusCode::OK, body)
+        }
+        _ => {
+            let body = format!("{name} v{version}");
+            HttpResponse::new(StatusCode::OK, &body)
+        }
+    }
 }
 
 pub fn get<F, Fut, S, R, T>(f: F, state: S) -> BoxedHandler
@@ -268,14 +283,22 @@ async fn handle_connection(stream: &mut TcpStream, router: Arc<Router>) -> anyho
     };
 
     let route_key = (req.method.clone(), req.path.clone());
-    let handler = router
-        .routes
-        .get(&route_key)
-        .or(router.fallback_handler.as_ref());
 
-    let response = match handler {
-        Some(h) => h(req).await,
-        None => HttpResponse::new(StatusCode::NOT_FOUND, "404 Not Found\n"),
+    let response = if let Some(handler) = router.routes.get(&route_key) {
+        handler(req).await
+    } else {
+        let path_exists_for_other_method = router
+            .routes
+            .keys()
+            .any(|(_method, path)| path == &req.path);
+
+        if path_exists_for_other_method {
+            HttpResponse::new(StatusCode::METHOD_NOT_ALLOWED, "405 Method Not Allowed\n")
+        } else if let Some(fallback) = router.fallback_handler.as_ref() {
+            fallback(req).await
+        } else {
+            HttpResponse::new(StatusCode::NOT_FOUND, "404 Not Found\n")
+        }
     };
 
     let (status_code_num, status_text) = response.status.as_parts();
