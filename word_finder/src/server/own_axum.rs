@@ -27,6 +27,7 @@ impl StatusCode {
 
 #[derive(Debug, Clone)]
 pub struct HttpRequest {
+    method: String,
     path: String,
     raw_query: String,
     headers: HashMap<String, String>,
@@ -126,7 +127,7 @@ where
 }
 
 pub struct Router {
-    routes: HashMap<String, BoxedHandler>,
+    routes: HashMap<(String, String), BoxedHandler>,
     fallback_handler: Option<BoxedHandler>,
 }
 
@@ -138,8 +139,9 @@ impl Router {
         }
     }
 
-    pub fn route(mut self, path: &str, handler: BoxedHandler) -> Self {
-        self.routes.insert(path.to_string(), handler);
+    pub fn route(mut self, method: &str, path: &str, handler: BoxedHandler) -> Self {
+        self.routes
+            .insert((method.to_uppercase(), path.to_string()), handler);
         self
     }
 
@@ -232,7 +234,7 @@ async fn handle_connection(stream: &mut TcpStream, router: Arc<Router>) -> anyho
         return Ok(());
     };
 
-    let Some((_method, path, raw_query)) = parse_request_line(request_line) else {
+    let Some((method, path, raw_query)) = parse_request_line(request_line) else {
         stream
             .write_all(b"HTTP/1.1 400 Bad Request\r\n\r\n")
             .await?;
@@ -259,14 +261,16 @@ async fn handle_connection(stream: &mut TcpStream, router: Arc<Router>) -> anyho
     }
 
     let req = HttpRequest {
+        method: method.to_uppercase(),
         path: path.to_string(),
         raw_query: raw_query.to_string(),
         headers,
     };
 
+    let route_key = (req.method.clone(), req.path.clone());
     let handler = router
         .routes
-        .get(&req.path)
+        .get(&route_key)
         .or(router.fallback_handler.as_ref());
 
     let response = match handler {

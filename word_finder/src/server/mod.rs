@@ -49,8 +49,12 @@ pub async fn run_server(addr: &str, db: Database) -> Result<()> {
     info!("Server is running on http://{addr}");
 
     let router = Router::new()
-        .route("/search", get(stream_server::search_handler, db.clone()))
-        .route("/info", get(info_handler, ()))
+        .route(
+            "GET",
+            "/search",
+            get(stream_server::search_handler, db.clone()),
+        )
+        .route("GET", "/info", get(info_handler, ()))
         .fallback(not_found);
 
     serve(listener, router).await
