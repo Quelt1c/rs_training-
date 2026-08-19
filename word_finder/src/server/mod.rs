@@ -35,9 +35,9 @@
 pub mod own_axum;
 pub mod stream_server;
 
-use crate::{database::Database, server::own_axum::info_handler};
+use crate::database::Database;
 use anyhow::{Context, Result};
-use own_axum::{Router, StatusCode, get, serve};
+use own_axum::{Router, StatusCode, serve, with_query_handler};
 use tokio::net::TcpListener;
 use tracing::info;
 
@@ -50,11 +50,25 @@ pub async fn run_server(addr: &str, db: Database) -> Result<()> {
 
     let router = Router::new()
         .route(
-            "GET",
             "/search",
-            get(stream_server::search_handler, db.clone()),
+            with_query_handler(stream_server::search_handler, db.clone()),
         )
-        .route("GET", "/info", get(info_handler, ()))
+        .post(
+            "/search",
+            with_query_handler(stream_server::search_handler, db.clone()),
+        )
+        .route(
+            "/download",
+            with_query_handler(own_axum::download_handler, db.clone()),
+        )
+        .post(
+            "/download",
+            with_query_handler(own_axum::download_handler, db.clone()),
+        )
+        .route(
+            "/info",
+            with_query_handler(own_axum::info_handler, db.clone()),
+        )
         .fallback(not_found);
 
     serve(listener, router).await

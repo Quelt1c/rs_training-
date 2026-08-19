@@ -9,4 +9,8 @@ pub struct Checker {
     pub file_path: PathBuf,
     #[arg(short, long, default_value_t = NonZeroUsize::new(1).unwrap())]
     pub threads: NonZeroUsize,
+    #[arg(short, long, default_value = "admin")]
+    pub username: String,
+    #[arg(short, long)]
+    pub password: Option<String>,
 }

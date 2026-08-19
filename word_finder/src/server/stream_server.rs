@@ -108,7 +108,7 @@
 //     output
 // }
 
-use super::own_axum::{HttpRequest, HttpResponse, Query, StatusCode};
+use super::own_axum::{ContentType, HttpMethod, HttpRequest, HttpResponse, Query, StatusCode};
 use crate::database::Database;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -125,14 +125,31 @@ pub async fn search_handler(
     Query(params): Query<SearchParams>,
     db: Database,
 ) -> HttpResponse {
-    let clean_word = params.word.trim();
-
     let accepts_json = req
         .header("accept")
         .is_some_and(|v| v.to_lowercase().contains("application/json"));
+    let word_source = if req.method() == HttpMethod::POST
+        && req.content_type() == Some(ContentType::ApplicationJson)
+    {
+        match serde_json::from_str::<SearchParams>(req.body()) {
+            Ok(body_params) => body_params.word,
+            Err(_) => {
+                let msg = "Invalid JSON body. Expected: {\"word\": \"...\"}";
+                return if accepts_json {
+                    HttpResponse::json(StatusCode::BAD_REQUEST, format!(r#"{{"error": "{msg}"}}"#))
+                } else {
+                    HttpResponse::new(StatusCode::BAD_REQUEST, msg)
+                };
+            }
+        }
+    } else {
+        params.word
+    };
+
+    let clean_word = word_source.trim();
 
     if clean_word.is_empty() {
-        let msg = "Usage: enter a word in the query parameter (e.g., http://127.0.0.1:27015/search?word=Lorem)";
+        let msg = "Usage: enter a word in the query parameter (e.g., http://127.0.0.1:27015/search?word=Lorem) or send POST with JSON body {\"word\": \"Lorem\"}";
         return if accepts_json {
             HttpResponse::json(StatusCode::BAD_REQUEST, format!(r#"{{"error": "{msg}"}}"#))
         } else {
